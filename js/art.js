@@ -149,38 +149,73 @@ const headOf = (neck, hip) => {
   return [neck[0] + dx / l * 9, neck[1] + dy / l * 9];
 };
 
-/** Personaggio anime originale su pannello scuro: il muscolo allenato è in rosso. */
+/** Figura anatomica (vettoriale) su pannello scuro: i muscoli allenati sono evidenziati in rosso. */
+const SK1 = '#F0C29E', SK2 = '#B9835F', SKF1 = '#C99874', SKF2 = '#8E6347', SHORTS2 = '#232B45', HAIR2 = '#2A2220';
+const sub = (a, b) => [b[0] - a[0], b[1] - a[1]];
+const lerp = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+function outline(p0, p1, st) {            // contorno rastremato lungo un segmento: stazioni [t, raggio]
+  const [dx, dy] = sub(p0, p1), l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, L = [], R = [];
+  st.forEach(([t, r0]) => { const r = r0 * 1.22, c = lerp(p0, p1, t); L.push([c[0] + nx * r, c[1] + ny * r]); R.push([c[0] - nx * r, c[1] - ny * r]); });
+  return [...L, ...R.reverse()].map(q => r1(q[0]) + ',' + r1(q[1])).join(' L');
+}
+function shape(a0, a1, b0, b1, st, fill, animate, stroke = 'none') {
+  const dA = 'M' + outline(a0, a1, st) + 'Z', dB = 'M' + outline(b0, b1, st) + 'Z';
+  const ex = `fill="${fill}" stroke="${stroke}" stroke-width=".6" stroke-linejoin="round"`;
+  return `<path d="${dA}" ${ex}>${animate ? `<animate attributeName="d" values="${dA};${dB};${dA}" ${ANIM}/>` : ''}</path>`;
+}
+function ell(c, ang, rx, ry) {
+  const pts = []; for (let k = 0; k < 16; k++) { const t = k / 16 * 2 * Math.PI, x = Math.cos(t) * rx, y = Math.sin(t) * ry;
+    pts.push([c[0] + x * Math.cos(ang) - y * Math.sin(ang), c[1] + x * Math.sin(ang) + y * Math.cos(ang)]); }
+  return 'M' + pts.map(q => r1(q[0]) + ',' + r1(q[1])).join(' L') + 'Z';
+}
+function belly(a0, a1, b0, b1, t, along, half, animate, fill = 'url(#fgMus)') {
+  const f = (p0, p1) => { const c = lerp(p0, p1, t), l = Math.hypot(p1[0] - p0[0], p1[1] - p0[1]); return ell(c, Math.atan2(p1[1] - p0[1], p1[0] - p0[0]), along * l / 2, half); };
+  const dA = f(a0, a1), dB = f(b0, b1);
+  return `<path d="${dA}" fill="${fill}" opacity=".95">${animate ? `<animate attributeName="d" values="${dA};${dB};${dA}" ${ANIM}/>` : ''}</path>`;
+}
+const BELLY = {
+  CHEST: [['torso', .74, .30, 4.6]], BACK: [['torso', .6, .5, 4.7], ['torso', .93, .2, 4.2]], CORE: [['torso', .36, .42, 4.0]],
+  LEGS: [['thigh', .66, .5, 4.4], ['shin', .3, .45, 3.0]], GLUTES: [['torso', .08, .3, 4.8], ['thigh', .12, .3, 4.6]],
+  SHOULDERS: [['uarm', .14, .38, 3.6], ['torso', .95, .18, 3.8]], ARMS: [['uarm', .5, .55, 3.0], ['farm', .3, .5, 2.4]],
+};
+
 export function exerciseFigure(ex, size = 64, animate = false) {
   const [A, B] = POSES[ex.motion];
   const [nA, hA, kA, fA, eA, haA] = A, [nB, hB, kB, fB, eB, haB] = B;
-  const two = A.length >= 8, motion = ex.motion, hot = WORK[ex.muscle] || [];
-  const c = (part, base) => (hot.includes(part) ? HOT : base);
-  let o = `<defs>${lg('fgBg', '#1D262B', '#0B1013')}<filter id="fgGl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>
-    <rect width="100" height="100" rx="10" fill="url(#fgBg)"/><line x1="4" y1="93" x2="96" y2="93" stroke="#33414a" stroke-width="2" stroke-linecap="round"/>`;
+  const two = A.length >= 8, motion = ex.motion, work = ex.muscle, hot = !!BELLY[work];
+  const seg4 = { torso: [hA, nA, hB, nB], thigh: [hA, kA, hB, kB], shin: [kA, fA, kB, fB], uarm: [nA, eA, nB, eB], farm: [eA, haA, eB, haB] };
+  let o = `<defs>${lg('fgBg', '#1D262B', '#0B1013')}${lg('fgSk', SK1, SK2, 0, 1)}${lg('fgSkF', SKF1, SKF2, 0, 1)}${lg('fgSh', '#3A4770', SHORTS2, 0, 1)}
+    <radialGradient id="fgMus" cx="45%" cy="40%" r="70%"><stop offset="0" stop-color="#FF7A6B"/><stop offset=".6" stop-color="#E5383B"/><stop offset="1" stop-color="#A4161A"/></radialGradient>
+    <filter id="fgGl" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="2.4"/></filter></defs>
+    <rect width="100" height="100" rx="10" fill="url(#fgBg)"/><ellipse cx="50" cy="93" rx="42" ry="2.6" fill="#000" opacity=".35"/><line x1="4" y1="93" x2="96" y2="93" stroke="#33414a" stroke-width="1.6" stroke-linecap="round"/>`;
   if (motion === 'BENCH') {
     o += `<rect x="12" y="68" width="64" height="7" rx="3" fill="#3A464E"/><line x1="20" y1="75" x2="20" y2="92" stroke="#2A343A" stroke-width="3.5" stroke-linecap="round"/>
       <line x1="68" y1="75" x2="68" y2="92" stroke="#2A343A" stroke-width="3.5" stroke-linecap="round"/>`;
   }
   if (motion === 'PULLUP') o += `<line x1="24" y1="6" x2="76" y2="6" stroke="${METAL}" stroke-width="3.6" stroke-linecap="round"/>`;
-  const gl = (p0a, p0b, p1a, p1b, w) => (hot.length ? seg(p0a, p0b, p1a, p1b, HOT, w + 4, animate).replace('<line', '<line filter="url(#fgGl)" opacity=".55"') : '');
-  if (two) o += seg(hA, A[6], hB, B[6], SHORTSF, 7.5, animate) + seg(A[6], A[7], B[6], B[7], SKINF, 5.5, animate);
-  if (hot.includes('thigh')) o += gl(hA, kA, hB, kB, 8);
-  if (hot.includes('torso')) o += gl(hA, nA, hB, nB, 11);
-  if (hot.includes('uarm')) o += gl(nA, eA, nB, eB, 6);
-  o += seg(hA, kA, hB, kB, c('thigh', SHORTS), 8, animate) + seg(kA, fA, kB, fB, c('shin', SKIN), 5.5, animate);
-  o += seg(fA, [fA[0] + 6, fA[1]], fB, [fB[0] + 6, fB[1]], '#FFFFFF', 4.2, animate);
-  o += seg(hA, nA, hB, nB, c('torso', TOP), 10.5, animate);
-  o += seg(hA, [hA[0] * .6 + nA[0] * .4, hA[1] * .6 + nA[1] * .4], hB, [hB[0] * .6 + nB[0] * .4, hB[1] * .6 + nB[1] * .4], SHORTS, 10.8, animate);
-  // testa anime: capelli a ciuffi (originali), fascia e viso
+  const THIGH = [[0, 4.6], [.35, 5.3], [.7, 4.4], [1, 3.4]], SHIN = [[0, 3.4], [.3, 3.7], [.75, 2.4], [1, 2.0]];
+  const TORSO = [[0, 4.4], [.35, 4.2], [.7, 5.0], [.9, 5.1], [1, 4.0]], UARM = [[0, 3.4], [.4, 3.5], [1, 2.6]], FARM = [[0, 2.7], [.3, 3.0], [1, 1.9]];
+  const part = (k, st, fill) => shape(...seg4[k], st, fill, animate, 'rgba(0,0,0,.25)');
+  if (two) {
+    o += shape(hA, A[6], hB, B[6], THIGH, 'url(#fgSkF)', animate, 'rgba(0,0,0,.3)') + shape(A[6], A[7], B[6], B[7], SHIN, 'url(#fgSkF)', animate, 'rgba(0,0,0,.3)');
+    o += seg(A[7], [A[7][0] + 5, A[7][1]], B[7], [B[7][0] + 5, B[7][1]], '#8A949B', 3.6, animate);
+  }
+  if (hot) BELLY[work].filter(m => ['thigh', 'torso'].includes(m[0])).forEach(m => { const g = seg4[m[0]]; o += belly(...g, m[1], m[2] * 1.05, m[3] + 1.6, animate, '#E5383B').replace('<path', '<path filter="url(#fgGl)" opacity=".5"'); });
+  o += part('thigh', THIGH, 'url(#fgSk)') + part('shin', SHIN, 'url(#fgSk)');
+  o += shape(hA, kA, hB, kB, [[0, 5.0], [.18, 5.7], [.42, 5.0]], 'url(#fgSh)', animate, 'rgba(0,0,0,.3)');
+  o += seg(fA, [fA[0] + 6, fA[1]], fB, [fB[0] + 6, fB[1]], '#E9EDEF', 3.8, animate);
+  o += part('torso', TORSO, 'url(#fgSk)');
+  o += shape(hA, nA, hB, nB, [[0, 4.8], [.16, 5.0]], 'url(#fgSh)', animate, 'rgba(0,0,0,.3)');
+  if (hot) BELLY[work].filter(m => !['uarm', 'farm'].includes(m[0])).forEach(m => { o += belly(...seg4[m[0]], m[1], m[2], m[3], animate); });
+  // testa
   const hdA = headOf(nA, hA), hdB = headOf(nB, hB);
-  const off = (nk, hp, hd, f, sd) => { const dx = hd[0] - nk[0], dy = hd[1] - nk[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l; return [hd[0] + ux * f - uy * sd, hd[1] + uy * f + ux * sd]; };
-  [[-5.5, 6.5, 3.2], [0, 10.5, 3.6], [5.5, 6.5, 3.2], [-2.8, 8.2, 3.4], [2.8, 8.2, 3.4]].forEach(([sd, f, r]) => {
-    o += dot(off(nA, hA, hdA, f * .55, sd), off(nB, hB, hdB, f * .55, sd), r, HAIR, animate);
-  });
-  o += dot(hdA, hdB, 6.4, SKIN, animate);
-  o += dot(off(nA, hA, hdA, 2.6, 0), off(nB, hB, hdB, 2.6, 0), 4.2, HAIR, animate);
-  o += dot(off(nA, hA, hdA, .2, 2.6), off(nB, hB, hdB, .2, 2.6), 1.7, '#FFFFFF', animate) + dot(off(nA, hA, hdA, .2, 3.0), off(nB, hB, hdB, .2, 3.0), 0.9, '#10142B', animate);
-  o += seg(nA, eA, nB, eB, c('uarm', SKIN), 5.8, animate) + seg(eA, haA, eB, haB, c('farm', SKIN), 4.8, animate);
+  const off = (nk, hd, f) => { const dx = hd[0] - nk[0], dy = hd[1] - nk[1], l = Math.hypot(dx, dy) || 1; return [hd[0] + dx / l * f, hd[1] + dy / l * f]; };
+  o += seg(nA, off(nA, hdA, -1), nB, off(nB, hdB, -1), 'url(#fgSk)', 3.4, animate);
+  o += dot(hdA, hdB, 6.2, SK1, animate);
+  o += dot(off(nA, hdA, 2.4), off(nB, hdB, 2.4), 4.6, HAIR2, animate);
+  o += part('uarm', UARM, 'url(#fgSk)') + part('farm', FARM, 'url(#fgSk)');
+  if (hot) BELLY[work].filter(m => ['uarm', 'farm'].includes(m[0]) || m[0] === 'uarm').forEach(m => { o += belly(...seg4[m[0]], m[1], m[2], m[3], animate); });
+  o += dot(haA, haB, 2.6, SK1, animate);
   const anchorA = motion === 'BRIDGE' ? hA : haA, anchorB = motion === 'BRIDGE' ? hB : haB;
   if (ex.equip === 'BARBELL') o += dot(anchorA, anchorB, 7, METAL, animate) + dot(anchorA, anchorB, 3, '#7C8790', animate);
   else if (ex.equip === 'DUMBBELL') o += dot(anchorA, anchorB, 4.4, METAL, animate);
