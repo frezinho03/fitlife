@@ -3,8 +3,9 @@ import * as L from './logic.js';
 import { EXERCISES } from './data.js';
 import * as S from './season.js';
 import { getState, update, settings, setSetting, getDraft, updateDraft, resetDraft, newId, exportJSON, importJSON, putPhoto, getPhoto, delPhoto, shrinkImage } from './store.js';
-import { foodIcon, mealIcon, plateArt, exerciseFigure } from './art.js';
-import { bodyMap, highlightFor, MUSCLE_NAMES, setBuild } from './body.js';
+import { foodIcon, mealIcon, plateArt } from './art.js';
+const exerciseFigure = (ex, size) => muscleIcon(highlightFor(infoFor(ex.id)), size);
+import { bodyMap, highlightFor, MUSCLE_NAMES, setBuild, setSex, muscleIcon } from './body.js';
 import { infoFor } from './exinfo.js';
 import * as P from './plan.js';
 
@@ -322,7 +323,6 @@ function viewExercise(id) {
   }
   const pills = (list, cls) => list.map(m => `<span class="pill ${cls}">${MUSCLE_NAMES[m]}</span>`).join('');
   return `<div class="page">${header(ex.name, '#/gym')}
-    <div class="vpanel"><div class="center" style="margin:0">${exerciseFigure(ex, 250, true)}</div><div class="cap">Movimento corretto · il muscolo allenato è in rosso</div></div>
     <h3>Muscoli coinvolti</h3>
     <div class="vpanel">${bodyMap(highlightFor(info))}<div class="cap">Rosso pieno = primari · rosso tenue = secondari</div></div>
     <p style="margin-top:10px">${pills(info.p, 'p')}${pills(info.s, 's')}</p>
@@ -801,7 +801,7 @@ export function render() {
   const [, route = 'home', a, b] = location.hash.split('/');
   if (!s.profile) { view.innerHTML = profileForm(false); tabs.hidden = true; updateProfilePreview(); return; }
   if (route === 'edit') { view.innerHTML = profileForm(true); tabs.hidden = true; updateProfilePreview(); return; }
-  setBuild(L.bmi(s.profile)); L.setUserRecipes(s.userRecipes);
+  setBuild(L.bmi(s.profile)); setSex(s.profile.sex); L.setUserRecipes(s.userRecipes);
   let html, top = true;
   switch (route) {
     case 'today': html = viewToday(); break;
