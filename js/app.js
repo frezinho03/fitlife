@@ -1,5 +1,7 @@
-import { render, bindEvents } from './ui.js';
+import { render, bindEvents, applyTheme } from './ui.js';
 
+applyTheme();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 bindEvents();
 window.addEventListener('hashchange', () => { window.scrollTo(0, 0); render(); });
 render();

@@ -1,8 +1,8 @@
 // Service worker: l'app funziona offline. Cambia VERSION quando aggiorni i file per forzare l'aggiornamento.
-const VERSION = 'fitlife-v1';
+const VERSION = 'fitlife-v2';
 const ASSETS = [
   './', 'index.html', 'manifest.webmanifest', 'css/style.css',
-  'js/app.js', 'js/ui.js', 'js/logic.js', 'js/data.js', 'js/art.js', 'js/store.js',
+  'js/app.js', 'js/ui.js', 'js/logic.js', 'js/data.js', 'js/art.js', 'js/store.js', 'js/body.js', 'js/exinfo.js', 'js/plan.js',
   'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 
