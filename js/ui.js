@@ -1,9 +1,10 @@
 // Interfaccia: viste, modali e gestione eventi. Nessuna dipendenza esterna.
 import * as L from './logic.js';
-import { FOODS, RECIPES, EXERCISES } from './data.js';
+import { EXERCISES } from './data.js';
+import * as S from './season.js';
 import { getState, update, settings, setSetting, getDraft, updateDraft, resetDraft, newId, exportJSON, importJSON, putPhoto, getPhoto, delPhoto, shrinkImage } from './store.js';
 import { foodIcon, mealIcon, plateArt, exerciseFigure } from './art.js';
-import { bodyMap, highlightFor, MUSCLE_NAMES } from './body.js';
+import { bodyMap, highlightFor, MUSCLE_NAMES, setBuild } from './body.js';
 import { infoFor } from './exinfo.js';
 import * as P from './plan.js';
 
@@ -172,13 +173,13 @@ function viewToday() {
 
 // ---- modale "aggiungi al diario"
 function foodListHTML(q) {
-  const list = FOODS.filter(f => f.name.toLowerCase().includes(q.trim().toLowerCase()));
+  const list = L.allFoods().filter(f => f.name.toLowerCase().includes(q.trim().toLowerCase()));
   if (!list.length) return '<p class="muted">Nessun alimento trovato.</p>';
   return list.map(f => `<button class="listrow" data-action="pick-food" data-id="${f.id}">${foodIcon(f.cat, 40)}<span class="grow"><span class="block">${esc(f.name)}</span>
     <span class="muted small">${L.fmt(f.kcal)} kcal / 100 g</span></span></button>`).join('');
 }
 function recipeListHTML(slot) {
-  return [...RECIPES].sort((a, b) => (a.slot === slot ? 0 : 1) - (b.slot === slot ? 0 : 1)).map(r =>
+  return [...L.allRecipes()].sort((a, b) => (a.slot === slot ? 0 : 1) - (b.slot === slot ? 0 : 1)).map(r =>
     `<button class="listrow" data-action="pick-recipe" data-id="${r.id}"><span class="grow"><span class="block">${esc(r.name)}</span>
      <span class="muted small">${L.SLOT[r.slot].label} · ${L.fmt(L.recipeMacros(r).kcal)} kcal a porzione</span></span></button>`).join('');
 }
@@ -252,11 +253,7 @@ function viewDiet() {
       }
     }
   } else {
-    body = L.SLOTS.map(sl => `<h3>${sl.label}</h3>` + RECIPES.filter(r => r.slot === sl.id).map(r => {
-      const m = L.recipeMacros(r);
-      return `<a class="mealrow" href="#/recipe/${r.id}/1">${plateArt(L.mainCategories(r), 56)}<span class="grow"><span class="block">${esc(r.name)}</span>
-        <span class="muted small">${L.fmt(m.kcal)} kcal · P ${L.fmt(m.p)} g · ${r.prep} min</span></span></a>`;
-    }).join('')).join('');
+    body = recipesTab();
   }
   return `<div class="page"><h1>La tua dieta</h1>${tabs}${body}</div>`;
 }
@@ -267,6 +264,7 @@ function viewRecipe(id, scale) {
   const m = L.recipeMacros(r, scale);
   return `<div class="page">${header(r.name, '#/diet')}
     <div class="center">${plateArt(L.mainCategories(r), 170)}</div>
+    ${r.user ? `<p class="center"><a class="btn sm" href="#/myrecipe/${r.id}">✏️ Modifica la mia ricetta</a></p>` : S.seasonScore(r, monthNow()) >= 0.7 ? '<p class="center"><span class="pill g">di stagione</span></p>' : ''}
     <p class="strong">${macroLine(m)}</p>
     <p class="muted small">${L.SLOT[r.slot].label} · ${r.prep} minuti${Math.abs(scale - 1) > 0.001 ? ` · porzione ×${scale.toFixed(2).replace('.', ',')}` : ''}</p>
     <h3>Ingredienti</h3>${r.ing.map(([fid, g]) => `<div class="ingr">${foodIcon(L.food(fid).cat, 30)}<span class="grow">${esc(L.food(fid).name)}</span><span>${L.formatQty(fid, g * scale)}</span></div>`).join('')}
@@ -304,7 +302,7 @@ function viewGym() {
        <span class="muted small">${L.MUSCLES[e.muscle]} · ${L.EQUIP[e.equip]}</span></span></a>`).join('');
   }
   return `<div class="page"><h1>Palestra</h1>
-    <a class="btn primary block" href="#/workout">${hasDraft ? '▶ Riprendi allenamento in corso' : '＋ Nuovo allenamento'}</a>
+    ${hasDraft ? '<a class="btn primary block" href="#/workout">▶ Riprendi allenamento in corso</a>' : '<button class="btn primary block" data-action="open-start">▶ Avvia un allenamento</button>'}
     ${hasDraft ? '<button class="btn text" data-action="discard-draft">Scarta la bozza</button>' : ''}
     <a class="btn block" href="#/plan">📋 Schede e giorni di allenamento</a>
     <div class="tabsbar">${[['workouts', 'Allenamenti'], ['exercises', 'Esercizi']].map(([k, l]) => `<button class="${tab === k ? 'on' : ''}" data-action="gym-tab" data-tab="${k}">${l}</button>`).join('')}</div>${body}</div>`;
@@ -339,7 +337,7 @@ function draftCard(it) {
   const ex = EX[it.exerciseId], last = lastLog(it.exerciseId), rest = it.rest || settings().restSec;
   return `<div class="card"><div class="mhead"><a href="#/exercise/${ex.id}">${exerciseFigure(ex, 72, false)}</a><div class="grow"><strong>${esc(ex.name)}</strong>
     ${last ? `<div class="muted small">Ultima volta (${L.shortDate(last.date)}): ${logSummary(last.log)}</div>` : ''}
-    <label class="small muted">Riposo <input class="restin" inputmode="numeric" data-input="rest" data-uid="${it.uid}" value="${rest}" style="width:56px;padding:4px;border:1px solid var(--fieldline);border-radius:8px;background:var(--field);text-align:center"> s</label></div>
+    <label class="small muted">Riposo <input class="restin" inputmode="text" data-input="rest" data-uid="${it.uid}" value="${fmtDur(rest)}" style="width:64px;padding:4px;border:1px solid var(--fieldline);border-radius:8px;background:var(--field);text-align:center"> min:sec</label></div>
     <button class="icon" data-action="draft-rm-ex" data-uid="${it.uid}" aria-label="Rimuovi esercizio">🗑</button></div>
     <div class="setrow head"><span>Serie</span><span>Ripetizioni</span><span>Peso (kg)</span><span>Fatta</span><span></span></div>
     ${it.sets.map((s, i) => `<div class="setrow ${s.done ? 'done' : ''}"><span class="strong">${i + 1}</span>
@@ -349,10 +347,19 @@ function draftCard(it) {
       <button class="icon" data-action="draft-rm-set" data-uid="${it.uid}" data-sid="${s.id}" aria-label="Rimuovi serie">✕</button></div>`).join('')}
     <button class="btn text" data-action="draft-add-set" data-uid="${it.uid}">＋ Serie</button></div>`;
 }
+const chronoText = () => { const d = getDraft(), sec = d.startedAt ? Math.max(0, Math.floor((Date.now() - d.startedAt) / 1000)) : 0; return `${String(Math.floor(sec / 3600)).padStart(2, '0')}:${String(Math.floor(sec / 60) % 60).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`; };
+let chronoH = 0;
+function syncChrono() {
+  clearInterval(chronoH);
+  if (location.hash === '#/workout') chronoH = setInterval(() => { const el = $('#chrono'); if (el) el.textContent = chronoText(); else clearInterval(chronoH); }, 1000);
+}
+/** "1:30" -> 90, "90" -> 90 */
+const parseDur = v => { const t = String(v).trim().replace(',', '.'); if (t.includes(':')) { const [m, sec] = t.split(':'); return (parseInt(m, 10) || 0) * 60 + (parseInt(sec, 10) || 0); } return Math.round(parseFloat(t)) || 0; };
+const fmtDur = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
 function viewWorkout() {
   const d = getDraft(), tpl = d.templateId && (getState().templates || P.defaultTemplates()).find(t => t.id === d.templateId);
   return `<div class="page">${header(tpl ? tpl.name : 'Nuovo allenamento', '#/gym')}
-    <p class="muted small">Spunta ✓ ogni serie completata: parte il timer di riposo.</p>
+    <div class="chrono"><div><span class="tag">Tempo di allenamento</span><b id="chrono">${chronoText()}</b></div><div class="muted small">Spunta ✓ a ogni serie fatta: parte il riposo.</div></div>
     <label class="fld">Nome<input data-input="draft-title" value="${esc(d.title)}" placeholder="Push, Gambe…"></label>
     <div class="chips scroll">${QUICK_TITLES.map(t => `<button class="chip btn-chip ${d.title === t ? 'on' : ''}" data-action="draft-title" data-v="${t}">${t}</button>`).join('')}</div>
     ${d.items.map(draftCard).join('')}
@@ -459,10 +466,11 @@ function tileTrain() {
       ? stat(st.minutes, 'minuti') + stat('~' + st.kcal, 'kcal')
       : stat(st.exercises, 'esercizi') + stat(st.sets, 'serie') + stat(st.minutes + "'", 'durata') + stat('~' + st.kcal, 'kcal')}</div>
       ${t.kind === 'run' ? '' : `<div class="muted small">Riposo medio tra le serie: ${P.fmtRest(st.rest)}</div>`}
-      ${done ? '<p class="accent strong">✓ Allenamento di oggi completato</p>' : `<button class="btn primary block" data-action="start-template" data-id="${t.id}">Inizia ${esc(t.name)}</button>`}`;
+      ${done ? '<p class="accent strong">✓ Allenamento di oggi completato</p>' : `<button class="btn primary block" data-action="start-template" data-id="${t.id}">▶ Inizia ${esc(t.name)}</button>`}
+      <button class="btn text" data-action="open-start">Scegli un'altra scheda</button>`;
   } else {
     const nx = [1, 2, 3, 4, 5, 6, 7].map(n => ({ n, t: tpls.find(x => x.id === sch[(P.weekdayIdx(today) + n) % 7]), i: (P.weekdayIdx(today) + n) % 7 })).find(x => x.t);
-    body = `<p><strong>Oggi riposo</strong>${nx ? ` · prossimo: ${D3[nx.i]} ${esc(nx.t.name)}` : ''}</p><a class="btn block" href="#/workout">Allenamento libero</a>`;
+    body = `<p><strong>Oggi riposo</strong>${nx ? ` · prossimo: ${D3[nx.i]} ${esc(nx.t.name)}` : ''}</p><button class="btn primary block" data-action="open-start">▶ Avvia comunque un allenamento</button>`;
   }
   return tileShell('train', 'Allenamenti', 'La tua settimana', '<a class="more" href="#/plan">Schede</a>', `<div class="week">${week}</div>${body}`);
 }
@@ -594,6 +602,7 @@ function viewTpl(id) {
 }
 function startTemplate(id) {
   const s = getState(), t = tplsOf(s).find(x => x.id === id); if (!t) return;
+  ui.modal = null; renderModal();
   if (t.kind === 'run') { ui.run = { min: String(t.minutes || 30), km: '' }; location.hash = '#/run'; return; }
   const d = getDraft();
   if (d.items.length && d.templateId !== id && !confirm('Hai un allenamento in corso. Vuoi sostituirlo?')) return;
@@ -634,6 +643,14 @@ function viewPhotos() {
     <label class="btn primary block">📷 Aggiungi foto<input type="file" accept="image/*" class="photo-input" hidden></label>
     <p class="muted small">Le foto restano solo su questo telefono. Per confronti utili: stessa posa, luce e orario.</p>${cmp}
     <h3>Tutte le foto</h3>${list.length ? `<div class="pgrid">${list.map(p => `<button class="ph" data-action="view-photo" data-id="${p.id}"><img data-photo="${p.id}" alt=""><span>${L.prettyDate(p.date)}</span></button>`).join('')}</div>` : '<p class="muted">Ancora nessuna foto.</p>'}</div>`;
+}
+function startModal() {
+  const s = getState(), kg = s.profile.weightKg, d = getDraft();
+  return `<div class="sheet"><div class="hdr"><button class="icon" data-action="close-modal" aria-label="Chiudi">✕</button><h2>Avvia un allenamento</h2></div>
+    <div class="sheetbody">${d.items.length ? `<a class="btn primary block" href="#/workout" data-action="close-modal">▶ Riprendi “${esc(d.title || 'allenamento')}” in corso</a>` : ''}
+    ${tplsOf(s).map(t => { const st = P.templateStats(t, kg); return `<button class="card listrow" style="display:block;border:1px solid var(--line);border-radius:18px;padding:14px;margin:10px 0" data-action="start-template" data-id="${t.id}">
+      <strong>${esc(t.name)}</strong><div class="muted small">${t.kind === 'run' ? `Corsa · ${st.minutes} min` : `${st.exercises} esercizi · ${st.sets} serie · ~${st.minutes} min · riposo medio ${P.fmtRest(st.rest)}`}</div></button>`; }).join('')}
+    <button class="btn block" data-action="start-free">＋ Allenamento libero (scegli tu gli esercizi)</button></div></div>`;
 }
 function photoModal() {
   const p = getState().photos.find(x => String(x.id) === String(ui.modal.id));
@@ -695,12 +712,96 @@ function tickRest() {
   $('#rt').textContent = P.fmtClock(left); $('#rb').style.width = Math.max(0, Math.min(100, (1 - left / rest.total) * 100)) + '%';
 }
 
+// ============================================================ RICETTE: stagione, mie ricette, "ho questi ingredienti"
+const monthNow = () => new Date().getMonth() + 1;
+const dietOk = (p, r) => !(p.diet === 'PESCATARIAN' && !L.isPescatarian(r)) && !(p.diet === 'VEGETARIAN' && !L.isVegetarian(r));
+const shortFood = id => L.food(id).name.replace(/\s*\(.*\)/, '').toLowerCase();
+const recRow = (r, extra = '') => { const m = L.recipeMacros(r); return `<a class="mealrow" href="#/recipe/${r.id}/1">${plateArt(L.mainCategories(r), 56)}<span class="grow"><span class="block">${esc(r.name)}</span>
+  <span class="muted small">${L.fmt(m.kcal)} kcal · P ${L.fmt(m.p)} g · ${r.prep} min</span>${extra}</span></a>`; };
+function recipesTab() {
+  const s = getState(), mo = monthNow(), p = s.profile, all = L.allRecipes().filter(r => dietOk(p, r));
+  const picks = all.map(r => ({ r, sc: S.seasonScore(r, mo) })).filter(x => x.sc >= 0.7).sort((a, b) => b.sc - a.sc).slice(0, 8);
+  const mine = s.userRecipes || [];
+  return `<div class="card hl"><strong>In stagione: ${S.seasonName(mo)}</strong><p class="small">${esc(S.seasonProduce(mo).join(', '))}</p></div>
+    <div class="btnrow"><a class="btn primary grow" href="#/fridge">🧺 Ho questi ingredienti</a><a class="btn grow" href="#/myrecipe/new">＋ Nuova ricetta</a></div>
+    <h3>Consigliate in questo periodo</h3>${picks.map(x => recRow(x.r, '<span class="pill g">di stagione</span>')).join('') || '<p class="muted">Nessuna ricetta consigliata.</p>'}
+    ${mine.length ? `<h3>Le mie ricette</h3>${mine.map(r => recRow(r)).join('')}` : ''}
+    ${L.SLOTS.map(sl => `<h3>${sl.label}</h3>` + all.filter(r => r.slot === sl.id).map(r => recRow(r)).join('')).join('')}`;
+}
+
+function newRec() { return { key: 'new', id: null, name: '', slot: 'LUNCH', prep: '20', ing: [{ foodId: 'chicken', g: '100' }], steps: '' }; }
+function recFrom(r) { return { key: r.id, id: r.id, name: r.name, slot: r.slot, prep: String(r.prep), ing: r.ing.map(([foodId, g]) => ({ foodId, g: String(g) })), steps: r.steps.join('\n') }; }
+function recMacroText() {
+  const r = ui.rec, ing = r.ing.filter(i => L.num(i.g) > 0).map(i => [i.foodId, L.num(i.g)]);
+  return ing.length ? macroLine(L.recipeMacros({ ing }, 1)) + ' (per porzione)' : '';
+}
+function viewMyRecipe(id) {
+  if (!ui.rec || ui.rec.key !== id) { const ex = (getState().userRecipes || []).find(r => r.id === id); ui.rec = ex ? recFrom(ex) : newRec(); }
+  const r = ui.rec, foods = [...L.allFoods()].sort((a, b) => a.name.localeCompare(b.name, 'it'));
+  return `<div class="page">${header(r.id ? 'Modifica ricetta' : 'Nuova ricetta', '#/diet')}
+    <label class="fld">Nome<input data-input="rec-name" value="${esc(r.name)}" placeholder="Es. Pollo al limone con riso"></label>
+    <div class="row2"><label class="fld">Pasto<select data-input="rec-slot">${L.SLOTS.map(sl => `<option value="${sl.id}" ${sl.id === r.slot ? 'selected' : ''}>${sl.label}</option>`).join('')}</select></label>
+    <label class="fld">Minuti<input inputmode="numeric" data-input="rec-prep" value="${esc(r.prep)}"></label></div>
+    <h3>Ingredienti</h3>${r.ing.map((i, n) => `<div class="exrow" style="grid-template-columns:1fr 70px 30px"><select data-input="rec-food" data-i="${n}" style="margin:0">${foods.map(f => `<option value="${f.id}" ${f.id === i.foodId ? 'selected' : ''}>${esc(f.name)}</option>`).join('')}</select>
+      <input inputmode="decimal" data-input="rec-g" data-i="${n}" value="${esc(i.g)}" aria-label="Grammi"><button class="icon" data-action="rec-rm-ing" data-i="${n}" aria-label="Rimuovi">✕</button></div>`).join('')}
+    <button class="btn block" data-action="rec-add-ing">＋ Ingrediente (grammi)</button>
+    <p id="rec-macros" class="strong">${recMacroText()}</p>
+    <label class="fld">Preparazione (un passaggio per riga)<textarea data-input="rec-steps" placeholder="Cuoci il riso…&#10;Salta le verdure…">${esc(r.steps)}</textarea></label>
+    <button class="btn primary block" data-action="rec-save">Salva ricetta</button>
+    ${r.id ? '<button class="btn block danger" data-action="rec-del">Elimina ricetta</button>' : ''}</div>`;
+}
+function saveRec() {
+  const r = ui.rec, ing = r.ing.filter(i => L.num(i.g) > 0).map(i => [i.foodId, L.num(i.g)]);
+  if (!r.name.trim() || !ing.length) { alert('Inserisci un nome e almeno un ingrediente con i grammi.'); return; }
+  const rec = { id: r.id || 'u' + newId(), name: r.name.trim(), slot: r.slot, prep: parseInt(r.prep, 10) || 15, ing, steps: r.steps.split('\n').map(x => x.trim()).filter(Boolean), user: true };
+  if (!rec.steps.length) rec.steps = ['Prepara gli ingredienti e cuocili come preferisci.'];
+  update(s => { s.userRecipes = s.userRecipes || []; const i = s.userRecipes.findIndex(x => x.id === rec.id); if (i >= 0) s.userRecipes[i] = rec; else s.userRecipes.push(rec); });
+  L.setUserRecipes(getState().userRecipes); ui.rec = null; toast('Ricetta salvata ✓'); location.hash = '#/recipe/' + rec.id + '/1';
+}
+
+// "Ho questi ingredienti": suggerisce ricette esistenti e compone un piatto con regole semplici (non usa intelligenza artificiale).
+function viewFridge() {
+  const s = getState(), have = ui.fridge || (ui.fridge = []), p = s.profile, mo = monthNow();
+  const chips = Object.entries(L.CATEGORIES).map(([cat, label]) => { const fs = L.allFoods().filter(f => f.cat === cat); return fs.length ? `<h3>${label}</h3><div class="chips">${fs.map(f =>
+    `<button class="chip btn-chip ${have.includes(f.id) ? 'on' : ''}" data-action="fridge-toggle" data-id="${f.id}">${esc(f.name.replace(/\s*\(.*\)/, ''))}</button>`).join('')}</div>` : ''; }).join('');
+  let results = '';
+  if (have.length) {
+    const rows = L.allRecipes().filter(r => dietOk(p, r)).map(r => { const need = r.ing.map(([id]) => id).filter(id => id !== 'oil'), miss = need.filter(id => !have.includes(id));
+      return { r, cover: need.length ? 1 - miss.length / need.length : 0, miss, sc: S.seasonScore(r, mo) }; })
+      .filter(x => x.cover >= 0.6).sort((a, b) => b.cover - a.cover || b.sc - a.sc).slice(0, 8);
+    results = `<h3>Ricette che puoi fare</h3>${rows.map(x => recRow(x.r, `<span class="small ${x.miss.length ? 'muted' : 'accent'}">${x.miss.length ? 'Ti manca: ' + esc(x.miss.map(shortFood).join(', ')) : '✓ Hai tutto'}</span>`)).join('') || '<p class="muted">Nessuna ricetta quasi completa: prova a selezionare altri ingredienti o crea un piatto qui sotto.</p>'}
+      <button class="btn primary block" data-action="fridge-compose">✨ Crea un piatto con questi ingredienti</button>`;
+  }
+  return `<div class="page">${header('Cosa hai in casa?', '#/diet')}<p class="muted small">Tocca gli ingredienti che hai: ti suggerisco le ricette più vicine. L'olio extravergine è sempre dato per disponibile.</p>${chips}${results}</div>`;
+}
+function composeRecipe(ids) {
+  const F = id => L.food(id), pick = (...cats) => ids.filter(id => cats.includes(F(id).cat));
+  const prot = pick('MEAT', 'FISH', 'EGG', 'LEGUME', 'DAIRY').filter(id => id !== 'whey')[0];
+  const carb = pick('GRAIN')[0], veg = pick('VEGETABLE').slice(0, 2), fruit = pick('FRUIT')[0], nut = pick('NUTS', 'FAT').filter(id => id !== 'oil')[0];
+  const ing = [], steps = [], PG = { MEAT: 160, FISH: 180, EGG: 120, LEGUME: 150, DAIRY: 150 }, CG = { potato: 220, bread: 70, oats: 60 };
+  const savory = !!(prot && ['MEAT', 'FISH', 'EGG', 'LEGUME'].includes(F(prot).cat)) || !!carb || veg.length > 0;
+  const slot = !savory ? (ids.includes('oats') ? 'BREAKFAST' : 'SNACK') : 'LUNCH';
+  if (carb) { ing.push([carb, CG[carb] || 80]); steps.push(carb === 'potato' ? 'Taglia le patate a cubetti e cuocile in forno a 200 °C per 30 minuti.' : carb === 'bread' ? 'Tosta il pane.' : `Cuoci ${shortFood(carb)} secondo i tempi indicati sulla confezione.`); }
+  veg.forEach(v => { ing.push([v, 150]); });
+  if (veg.length) steps.push(`Taglia ${veg.map(shortFood).join(' e ')} e saltali in padella con un filo d'olio per 8–10 minuti.`);
+  if (prot) { ing.push([prot, PG[F(prot).cat] || 120]); const c = F(prot).cat;
+    steps.push(c === 'MEAT' ? `Cuoci ${shortFood(prot)} sulla piastra 5–6 minuti per lato, fino a cottura completa.` : c === 'FISH' ? `Cuoci ${shortFood(prot)} in forno a 180 °C per 15–20 minuti.` : c === 'EGG' ? 'Cuoci le uova in padella antiaderente, a occhio di bue o strapazzate.' : c === 'LEGUME' ? `Scalda ${shortFood(prot)} in padella insieme alle verdure.` : `Aggiungi ${shortFood(prot)} a crudo a fine cottura.`); }
+  if (fruit) { ing.push([fruit, 150]); steps.push(`Taglia ${shortFood(fruit)} e aggiungila al piatto.`); }
+  if (nut) ing.push([nut, nut === 'avocado' ? 60 : 20]);
+  if (savory) ing.push(['oil', 8]);
+  steps.push('Componi il piatto, aggiusta di sale e completa con un filo d\'olio a crudo.');
+  const nm = [prot, carb, veg[0] || fruit].filter(Boolean).map(shortFood);
+  const name = nm.length > 2 ? `${cap(nm[0])} con ${nm[1]} e ${nm[2]}` : nm.length === 2 ? `${cap(nm[0])} con ${nm[1]}` : cap(nm[0] || 'Piatto');
+  return { key: 'new', id: null, name, slot, prep: '25', ing: ing.map(([foodId, g]) => ({ foodId, g: String(g) })), steps: steps.join('\n') };
+}
+
 // ============================================================ render
 export function render() {
   const s = getState(), view = $('#view'), tabs = $('#tabs');
   const [, route = 'home', a, b] = location.hash.split('/');
   if (!s.profile) { view.innerHTML = profileForm(false); tabs.hidden = true; updateProfilePreview(); return; }
   if (route === 'edit') { view.innerHTML = profileForm(true); tabs.hidden = true; updateProfilePreview(); return; }
+  setBuild(L.bmi(s.profile)); L.setUserRecipes(s.userRecipes);
   let html, top = true;
   switch (route) {
     case 'today': html = viewToday(); break;
@@ -714,6 +815,8 @@ export function render() {
     case 'recipe': html = viewRecipe(a, parseFloat(b) || 1); top = false; break;
     case 'exercise': html = viewExercise(a); top = false; break;
     case 'workout': html = viewWorkout(); top = false; break;
+    case 'myrecipe': html = viewMyRecipe(a); top = false; break;
+    case 'fridge': html = viewFridge(); top = false; break;
     case 'run': html = viewRun(); top = false; break;
     case 'tpl': html = viewTpl(a); top = false; break;
     default: html = viewHome();
@@ -723,13 +826,13 @@ export function render() {
   const tabIcon = { home: ICON.home, today: ICON.diary, diet: ICON.diet, gym: ICON.gym, progress: ICON.chart };
   tabs.hidden = !top;
   tabs.innerHTML = TABS.map(([r, lb]) => `<a href="#/${r}" class="${r === cur ? 'on' : ''}">${tabIcon[r]}${lb}</a>`).join('');
-  renderModal(); loadPhotos();
+  renderModal(); loadPhotos(); syncChrono();
 }
 function renderModal() {
   const box = $('#modal'), m = ui.modal;
   document.body.classList.toggle('noscroll', !!m);
   if (!m) { box.innerHTML = ''; return; }
-  box.innerHTML = m.type === 'add' ? addModal() : m.type === 'photo' ? photoModal() : pickerModal();
+  box.innerHTML = m.type === 'add' ? addModal() : m.type === 'photo' ? photoModal() : m.type === 'start' ? startModal() : pickerModal();
   updateModalPreview(); loadPhotos();
 }
 
@@ -817,6 +920,18 @@ const actions = {
   },
   'draft-rm-set'(d) { updateDraft(x => { const it = x.items.find(i => String(i.uid) === d.uid); it.sets = it.sets.filter(s => String(s.id) !== d.sid); }); render(); },
   'save-workout'() { saveWorkout(); },
+  'fridge-toggle'(d) { const a = ui.fridge || (ui.fridge = []), i = a.indexOf(d.id); if (i >= 0) a.splice(i, 1); else a.push(d.id); const y = scrollY; render(); scrollTo(0, y); },
+  'fridge-compose'() { ui.rec = composeRecipe(ui.fridge || []); location.hash = '#/myrecipe/new'; },
+  'rec-add-ing'() { ui.rec.ing.push({ foodId: 'chicken', g: '100' }); const y = scrollY; render(); scrollTo(0, y); },
+  'rec-rm-ing'(d) { ui.rec.ing.splice(parseInt(d.i, 10), 1); if (!ui.rec.ing.length) ui.rec.ing.push({ foodId: 'chicken', g: '100' }); render(); },
+  'rec-save'() { saveRec(); },
+  'rec-del'() { if (!confirm('Eliminare questa ricetta?')) return; update(st => { st.userRecipes = (st.userRecipes || []).filter(x => x.id !== ui.rec.id); }); L.setUserRecipes(getState().userRecipes); ui.rec = null; location.hash = '#/diet'; },
+  'open-start'() { ui.modal = { type: 'start' }; renderModal(); },
+  'start-free'() {
+    const d = getDraft();
+    if (d.items.length && !confirm('Hai un allenamento in corso. Vuoi sostituirlo?')) return;
+    resetDraft(); updateDraft(x => { x.startedAt = Date.now(); }); ui.modal = null; renderModal(); location.hash = '#/workout';
+  },
   'set-done'(d) {
     let nowDone = false, restS = 0;
     updateDraft(x => { const it = x.items.find(i => String(i.uid) === d.uid), st = it.sets.find(q => String(q.id) === d.sid); st.done = !st.done; nowDone = st.done; restS = it.rest || settings().restSec; });
@@ -875,7 +990,13 @@ const inputs = {
   'portions'(el) { ui.modal.portions = el.value; updateModalPreview(); },
   'picker-query'(el) { ui.modal.query = el.value; $('#plist').innerHTML = pickerListHTML(ui.modal); },
   'draft-title'(el) { updateDraft(x => { x.title = el.value; }); },
-  'rest'(el) { updateDraft(x => { const it = x.items.find(i => String(i.uid) === el.dataset.uid); it.rest = Math.max(10, Math.min(600, parseInt(el.value, 10) || 90)); }); },
+  'rec-name'(el) { ui.rec.name = el.value; },
+  'rec-slot'(el) { ui.rec.slot = el.value; },
+  'rec-prep'(el) { ui.rec.prep = el.value; },
+  'rec-steps'(el) { ui.rec.steps = el.value; },
+  'rec-food'(el) { ui.rec.ing[parseInt(el.dataset.i, 10)].foodId = el.value; const e = $('#rec-macros'); if (e) e.textContent = recMacroText(); },
+  'rec-g'(el) { ui.rec.ing[parseInt(el.dataset.i, 10)].g = el.value; const e = $('#rec-macros'); if (e) e.textContent = recMacroText(); },
+  'rest'(el) { updateDraft(x => { const it = x.items.find(i => String(i.uid) === el.dataset.uid); it.rest = Math.max(10, Math.min(900, parseDur(el.value) || 90)); }); },
   'tpl-field'(el) { mutTpl(el.dataset.tpl, t => { t.exercises[parseInt(el.dataset.i, 10)][el.dataset.field] = Math.max(1, parseInt(el.value, 10) || 1); }); },
   'tpl-name'(el) { mutTpl(el.dataset.tpl, t => { t.name = el.value.toUpperCase().slice(0, 14) || 'SCHEDA'; }); },
   'tpl-minutes'(el) { mutTpl(el.dataset.tpl, t => { t.minutes = Math.max(5, parseInt(el.value, 10) || 30); }); },

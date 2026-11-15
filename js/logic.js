@@ -1,5 +1,7 @@
 // Logica pura (nessun accesso al DOM): calcolo fabbisogni, generatore dieta, lista spesa, date.
 import { FOODS, RECIPES } from './data.js';
+import { EXTRA_FOODS, EXTRA_RECIPES } from './extra.js';
+import { seasonScore } from './season.js';
 
 export const SLOTS = [
   { id: 'BREAKFAST', label: 'Colazione', share: 0.22 },
@@ -39,8 +41,16 @@ export const MUSCLES = {
 };
 export const EQUIP = { BARBELL: 'Bilanciere', DUMBBELL: 'Manubri', BODYWEIGHT: 'Corpo libero', MACHINE: 'Macchina' };
 
-const FOOD = Object.fromEntries(FOODS.map(f => [f.id, f]));
-const RECIPE = Object.fromEntries(RECIPES.map(r => [r.id, r]));
+const FOOD = Object.fromEntries([...FOODS, ...EXTRA_FOODS].map(f => [f.id, f]));
+const BASE_RECIPES = [...RECIPES, ...EXTRA_RECIPES];
+let USER_RECIPES = [];
+const RECIPE = {};
+const reindex = () => { for (const k of Object.keys(RECIPE)) delete RECIPE[k]; [...BASE_RECIPES, ...USER_RECIPES].forEach(r => { RECIPE[r.id] = r; }); };
+reindex();
+/** Ricette create dall'utente: vengono aggiunte a quelle dell'app. */
+export const setUserRecipes = list => { USER_RECIPES = Array.isArray(list) ? list : []; reindex(); };
+export const allRecipes = () => [...BASE_RECIPES, ...USER_RECIPES];
+export const allFoods = () => Object.values(FOOD);
 export const food = id => FOOD[id];
 export const recipe = id => RECIPE[id];
 
@@ -106,8 +116,8 @@ function mulberry32(a) {
 
 export function eligible(profile, slot) {
   const excluded = (profile.excluded || '').split(/[,;\n]/).map(s => s.trim().toLowerCase()).filter(s => s.length >= 3);
-  return RECIPES.filter(r => {
-    if (r.slot !== slot) return false;
+  return allRecipes().filter(r => {
+    if (r.slot !== slot || r.inPlan === false) return false;
     if (profile.diet === 'PESCATARIAN' && !isPescatarian(r)) return false;
     if (profile.diet === 'VEGETARIAN' && !isVegetarian(r)) return false;
     return !r.ing.some(([id]) => {
@@ -135,7 +145,9 @@ export function generatePlan(profile, tg, seed, startISO = todayISO()) {
         const pool = pools[s.id];
         let cand = pool.filter(r => !recent[s.id].includes(r.id));
         if (!cand.length) cand = pool;
-        const chosen = cand[Math.floor(rnd() * cand.length)];
+        const month = parseISO(startISO).getMonth() + 1, w = cand.map(r => 0.15 + seasonScore(r, month)), tot = w.reduce((a, b) => a + b, 0);
+        let x = rnd() * tot, ci = 0; while (ci < cand.length - 1 && x > w[ci]) { x -= w[ci]; ci++; }
+        const chosen = cand[ci];
         recent[s.id].push(chosen.id);
         while (recent[s.id].length > 2) recent[s.id].shift();
         return { slot: s.id, recipeId: chosen.id, scale: scaleFor(chosen, tg.kcal * s.share) };

@@ -43,6 +43,9 @@ const BACK = [
 ];
 
 const HOT = '#E5383B';
+// Corporatura: la larghezza del disegno segue l'indice di massa corporea (peso e altezza del profilo).
+let K = 0.82;
+export function setBuild(bmi) { K = Math.max(0.7, Math.min(0.96, 0.7 + (bmi - 18) * 0.025)); }
 
 /** Intensità (0-1) per muscolo -> opacità del rosso. */
 function half(list, hl) {
@@ -57,7 +60,7 @@ function figure(list, hl, label, dx) {
   const side = `${body}${half(list, hl)}`;
   return `<g transform="translate(${dx},0)">
     <circle cx="100" cy="27" r="17" class="bb"/><rect x="92" y="40" width="16" height="16" rx="5" class="bb"/>
-    <g>${side}</g><g transform="translate(200,0) scale(-1,1)">${side}</g>
+    <g transform="translate(100 0) scale(${K.toFixed(3)} 1) translate(-100 0)"><g>${side}</g><g transform="translate(200,0) scale(-1,1)">${side}</g></g>
     <text x="100" y="368" text-anchor="middle" class="bl">${label}</text></g>`;
 }
 

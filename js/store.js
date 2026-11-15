@@ -5,7 +5,7 @@ const DRAFT_KEY = 'fitlife.draft.v1';
 export const DEFAULT_SETTINGS = {
   theme: 'auto', tiles: ['train', 'food', 'calendar', 'health'], weightEvery: 7, photoEvery: 30, restSec: 90,
 };
-const empty = () => ({ profile: null, weights: [], food: [], workouts: [], plan: null, checked: [], settings: {}, templates: null, schedule: null, photos: [], notes: '' });
+const empty = () => ({ profile: null, weights: [], food: [], workouts: [], plan: null, checked: [], settings: {}, templates: null, schedule: null, photos: [], notes: '', userRecipes: [] });
 
 function read(key, fallback) {
   try {

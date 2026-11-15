@@ -189,3 +189,8 @@ button.wd { font: inherit; cursor: pointer; }
 .exrow { display: grid; grid-template-columns: 1fr 48px 48px 52px 30px 30px; gap: 5px; align-items: center; margin: 6px 0; font-size: .86rem; } .exrow input { width: 100%; padding: 8px 4px; border: 1px solid var(--fieldline); border-radius: 10px; background: var(--field); text-align: center; }
 .exrow.head { font-size: .66rem; color: var(--mut); text-transform: uppercase; letter-spacing: .04em; text-align: center; margin-top: 12px; } .exrow.head span:first-child { text-align: left; }
 #tiles { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+
+.chrono { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--panel); color: #fff; border-radius: 18px; padding: 12px 16px; margin: 6px 0 12px; }
+.chrono b { display: block; font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.02em; } .chrono .tag { color: var(--g); } .chrono .muted { color: #9fb0a8; max-width: 130px; text-align: right; }
+.pill.g { background: var(--gsoft); color: var(--gt); }
+.page .mealrow .pill { margin: 3px 0 0; }

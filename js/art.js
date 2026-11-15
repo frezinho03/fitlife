@@ -128,7 +128,7 @@ export function plateArt(cats, size = 56) {
 }
 
 // ---------------------------------------------------------------- figura animata degli esercizi
-const HOT = '#E5383B', BASE = '#B4BFBA', FAR = '#6E7B76', HEAD = '#C9D2CE', METAL = '#D7DCE0';
+const HOT = '#E5383B', SKIN = '#F6C7A0', SKINF = '#D9A67E', TOP = '#5EDDD7', TOPF = '#2FA7A1', SHORTS = '#2B3A67', SHORTSF = '#1F2A4B', HAIR = '#1B1F3B', BAND = '#FF6B6B', METAL = '#D7DCE0';
 const WORK = { CHEST: ['torso'], BACK: ['torso'], LEGS: ['thigh', 'shin'], GLUTES: ['thigh'], SHOULDERS: ['uarm'], ARMS: ['uarm', 'farm'], CORE: ['torso'] };
 const r1 = v => Math.round(v * 10) / 10;
 const ANIM = 'dur="2.4s" repeatCount="indefinite" calcMode="spline" keyTimes="0;0.5;1" keySplines=".4 0 .6 1;.4 0 .6 1"';
@@ -149,12 +149,12 @@ const headOf = (neck, hip) => {
   return [neck[0] + dx / l * 9, neck[1] + dy / l * 9];
 };
 
-/** Figura grigia su pannello scuro: i segmenti del muscolo allenato sono rossi. */
+/** Personaggio anime originale su pannello scuro: il muscolo allenato è in rosso. */
 export function exerciseFigure(ex, size = 64, animate = false) {
   const [A, B] = POSES[ex.motion];
   const [nA, hA, kA, fA, eA, haA] = A, [nB, hB, kB, fB, eB, haB] = B;
   const two = A.length >= 8, motion = ex.motion, hot = WORK[ex.muscle] || [];
-  const c = part => (hot.includes(part) ? HOT : BASE);
+  const c = (part, base) => (hot.includes(part) ? HOT : base);
   let o = `<defs>${lg('fgBg', '#1D262B', '#0B1013')}<filter id="fgGl" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="2.2"/></filter></defs>
     <rect width="100" height="100" rx="10" fill="url(#fgBg)"/><line x1="4" y1="93" x2="96" y2="93" stroke="#33414a" stroke-width="2" stroke-linecap="round"/>`;
   if (motion === 'BENCH') {
@@ -163,15 +163,24 @@ export function exerciseFigure(ex, size = 64, animate = false) {
   }
   if (motion === 'PULLUP') o += `<line x1="24" y1="6" x2="76" y2="6" stroke="${METAL}" stroke-width="3.6" stroke-linecap="round"/>`;
   const gl = (p0a, p0b, p1a, p1b, w) => (hot.length ? seg(p0a, p0b, p1a, p1b, HOT, w + 4, animate).replace('<line', '<line filter="url(#fgGl)" opacity=".55"') : '');
-  if (two) o += seg(hA, A[6], hB, B[6], FAR, 8, animate) + seg(A[6], A[7], B[6], B[7], FAR, 6.5, animate);
+  if (two) o += seg(hA, A[6], hB, B[6], SHORTSF, 7.5, animate) + seg(A[6], A[7], B[6], B[7], SKINF, 5.5, animate);
   if (hot.includes('thigh')) o += gl(hA, kA, hB, kB, 8);
-  if (hot.includes('torso')) o += gl(hA, nA, hB, nB, 12);
-  if (hot.includes('uarm')) o += gl(nA, eA, nB, eB, 7);
-  o += seg(hA, kA, hB, kB, c('thigh'), 9, animate) + seg(kA, fA, kB, fB, c('shin'), 7, animate);
-  o += seg(fA, [fA[0] + 6, fA[1]], fB, [fB[0] + 6, fB[1]], FAR, 4.5, animate);
-  o += seg(hA, nA, hB, nB, c('torso'), 12, animate);
-  o += dot(headOf(nA, hA), headOf(nB, hB), 6.6, HEAD, animate);
-  o += seg(nA, eA, nB, eB, c('uarm'), 7, animate) + seg(eA, haA, eB, haB, c('farm'), 5.5, animate);
+  if (hot.includes('torso')) o += gl(hA, nA, hB, nB, 11);
+  if (hot.includes('uarm')) o += gl(nA, eA, nB, eB, 6);
+  o += seg(hA, kA, hB, kB, c('thigh', SHORTS), 8, animate) + seg(kA, fA, kB, fB, c('shin', SKIN), 5.5, animate);
+  o += seg(fA, [fA[0] + 6, fA[1]], fB, [fB[0] + 6, fB[1]], '#FFFFFF', 4.2, animate);
+  o += seg(hA, nA, hB, nB, c('torso', TOP), 10.5, animate);
+  o += seg(hA, [hA[0] * .6 + nA[0] * .4, hA[1] * .6 + nA[1] * .4], hB, [hB[0] * .6 + nB[0] * .4, hB[1] * .6 + nB[1] * .4], SHORTS, 10.8, animate);
+  // testa anime: capelli a ciuffi (originali), fascia e viso
+  const hdA = headOf(nA, hA), hdB = headOf(nB, hB);
+  const off = (nk, hp, hd, f, sd) => { const dx = hd[0] - nk[0], dy = hd[1] - nk[1], l = Math.hypot(dx, dy) || 1, ux = dx / l, uy = dy / l; return [hd[0] + ux * f - uy * sd, hd[1] + uy * f + ux * sd]; };
+  [[-5.5, 6.5, 3.2], [0, 10.5, 3.6], [5.5, 6.5, 3.2], [-2.8, 8.2, 3.4], [2.8, 8.2, 3.4]].forEach(([sd, f, r]) => {
+    o += dot(off(nA, hA, hdA, f * .55, sd), off(nB, hB, hdB, f * .55, sd), r, HAIR, animate);
+  });
+  o += dot(hdA, hdB, 6.4, SKIN, animate);
+  o += dot(off(nA, hA, hdA, 2.6, 0), off(nB, hB, hdB, 2.6, 0), 4.2, HAIR, animate);
+  o += dot(off(nA, hA, hdA, .2, 2.6), off(nB, hB, hdB, .2, 2.6), 1.7, '#FFFFFF', animate) + dot(off(nA, hA, hdA, .2, 3.0), off(nB, hB, hdB, .2, 3.0), 0.9, '#10142B', animate);
+  o += seg(nA, eA, nB, eB, c('uarm', SKIN), 5.8, animate) + seg(eA, haA, eB, haB, c('farm', SKIN), 4.8, animate);
   const anchorA = motion === 'BRIDGE' ? hA : haA, anchorB = motion === 'BRIDGE' ? hB : haB;
   if (ex.equip === 'BARBELL') o += dot(anchorA, anchorB, 7, METAL, animate) + dot(anchorA, anchorB, 3, '#7C8790', animate);
   else if (ex.equip === 'DUMBBELL') o += dot(anchorA, anchorB, 4.4, METAL, animate);
