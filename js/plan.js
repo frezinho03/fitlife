@@ -1,5 +1,5 @@
 // Logica pura per schede di allenamento, stimoli muscolari, consigli e calendario.
-import { EXERCISES } from './data.js';
+import { ALL_EXERCISES as EXERCISES } from './catalog.js';
 import { infoFor, } from './exinfo.js';
 import { MUSCLE_NAMES } from './body.js';
 import * as L from './logic.js';

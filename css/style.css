@@ -85,7 +85,7 @@ svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-widt
 /* chip, tab, radio, interruttori */
 .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0; } .chips.scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; }
 .chip input { display: none; }
-.chip span, button.chip { display: inline-block; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--txt); font: inherit; white-space: nowrap; cursor: pointer; }
+.chip span, button.chip, a.chip { display: inline-block; padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--txt); font: inherit; white-space: nowrap; cursor: pointer; }
 .chip input:checked + span, button.chip.on { background: var(--g); border-color: var(--g); color: var(--onp); }
 .radios { display: flex; flex-direction: column; gap: 4px; } .radio { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
 .radio input { accent-color: var(--g); width: 20px; height: 20px; }
@@ -195,3 +195,20 @@ button.wd { font: inherit; cursor: pointer; }
 .pill.g { background: var(--gsoft); color: var(--gt); }
 .page .mealrow .pill { margin: 3px 0 0; }
 .micon { display: inline-block; flex: none; background: #14191C; border-radius: 10px; padding: 3px; box-sizing: border-box; } .micon .bodymap { width: 100%; height: 100%; } .micon .bodymap .mh { filter: none; }
+
+/* v8: palestra, home, dieta, spesa, calendario */
+.gtiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; } .gtile { display: flex; flex-direction: column; gap: 2px; padding: 16px 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); text-decoration: none; color: inherit; min-height: 64px; justify-content: center; }
+.gtile strong { font-size: .95rem; }
+.cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0; } .ctile { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 14px 12px; border-radius: 16px; background: var(--card); border: 1px solid var(--line); text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.ctile .ce { font-size: 1.6rem; } .ctile strong { font-size: .9rem; }
+.mealbtn { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; margin: 10px 0; border-radius: 18px; background: var(--card); border: 1px solid var(--line); font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.mealbtn .grow { display: flex; flex-direction: column; } .chef { margin: 4px 0 8px; }
+details.card > summary { cursor: pointer; list-style: none; } details.card[open] > summary { margin-bottom: 10px; }
+.hrow { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 4px; border: 0; border-top: 1px solid var(--line); background: none; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.hrow .hi { width: 24px; flex: none; } .hrow .thumb { width: 44px; height: 44px; border-radius: 12px; background: var(--bg); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; flex: none; } .thumb-empty { width: 100%; height: 100%; }
+.hrow .grow { font-size: .88rem; line-height: 1.3; } .kbar { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); text-decoration: none; color: inherit; }
+.wd.sel { border-color: var(--g); background: var(--gsoft); }
+.mealblk { padding: 10px 0; border-top: 1px solid var(--line); } .card textarea { width: 100%; min-height: 80px; border: 1px solid var(--fieldline); border-radius: 12px; background: var(--field); color: inherit; padding: 10px; font: inherit; box-sizing: border-box; }
+.crow { padding: 6px 0; border-top: 1px solid var(--line); } .dayh { margin: 16px 0 0; }
+a.chip { text-decoration: none; }
+details.card > summary::after { content: ' ▾'; color: var(--gt); }

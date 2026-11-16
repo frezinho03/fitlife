@@ -133,4 +133,6 @@ export const EX_INFO = {
     'Espira salendo.', '12–20', 45),
 };
 
-export const infoFor = id => EX_INFO[id] || { p: [], s: [], steps: [], mistakes: [], breath: '', reps: '8–12', rest: 90 };
+import { EX_BY_ID, groupInfoOf } from './catalog.js';
+const GENERIC = { steps: [], mistakes: [], breath: '', reps: '8–12', rest: 90 };
+export const infoFor = id => EX_INFO[id] || { ...GENERIC, ...(EX_BY_ID[id] ? groupInfoOf(EX_BY_ID[id]) : { p: [], s: [] }) };

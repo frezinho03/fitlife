@@ -2,6 +2,7 @@
 import { FOODS, RECIPES } from './data.js';
 import { EXTRA_FOODS, EXTRA_RECIPES } from './extra.js';
 import { seasonScore } from './season.js';
+import { USER_FOODS, FOOD_CATS } from './catalog.js';
 
 export const SLOTS = [
   { id: 'BREAKFAST', label: 'Colazione', share: 0.22 },
@@ -39,9 +40,13 @@ const CAT_ORDER = Object.keys(CATEGORIES);
 export const MUSCLES = {
   CHEST: 'Petto', BACK: 'Schiena', LEGS: 'Gambe', GLUTES: 'Glutei', SHOULDERS: 'Spalle', ARMS: 'Braccia', CORE: 'Addome',
 };
-export const EQUIP = { BARBELL: 'Bilanciere', DUMBBELL: 'Manubri', BODYWEIGHT: 'Corpo libero', MACHINE: 'Macchina' };
+export const EQUIP = { BARBELL: 'Bilanciere', DUMBBELL: 'Manubri', BODYWEIGHT: 'Corpo libero', MACHINE: 'Macchina', KETTLEBELL: 'Kettlebell', BAND: 'Banda', CABLE: 'Cavi' };
 
-const FOOD = Object.fromEntries([...FOODS, ...EXTRA_FOODS].map(f => [f.id, f]));
+const BASE_FOODS = [...FOODS, ...EXTRA_FOODS];
+const FOOD = Object.fromEntries([...BASE_FOODS, ...USER_FOODS].map(f => [f.id, f]));
+export const baseFoods = () => BASE_FOODS;
+export const FOOD_CATEGORIES = FOOD_CATS;
+export const foodsOfCat = cid => USER_FOODS.filter(f => f.ucat === cid);
 const BASE_RECIPES = [...RECIPES, ...EXTRA_RECIPES];
 let USER_RECIPES = [];
 const RECIPE = {};
